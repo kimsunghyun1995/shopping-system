@@ -2,6 +2,9 @@ package com.ksh.shopping_system.adapter.out.persistence.entity;
 
 
 import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
 
 /**
  * 상품 엔티티
@@ -9,6 +12,8 @@ import jakarta.persistence.*;
  */
 @Entity
 @Table(name = "products")
+@Getter
+@NoArgsConstructor
 public class ProductEntity {
 
 	@Id
@@ -26,8 +31,18 @@ public class ProductEntity {
 	@Column(nullable = false)
 	private Long price;
 
+	public ProductEntity(BrandEntity brand, CategoryEntity category, Long price) {
+		this.brand = brand;
+		this.category = category;
+		this.price = price;
+	}
+
 	public void changePrice(Long newPrice) {
 		this.price = newPrice;
 	}
+
+	public void update(ProductEntity oldEntity) {
+	}
+
 
 }

@@ -23,4 +23,8 @@ public class Product {
 		this.price = newPrice;
 	}
 
+	public long getPriceValue() {
+		return price.getPrice();
+	}
+
 }

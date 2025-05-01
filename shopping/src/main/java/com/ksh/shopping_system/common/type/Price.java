@@ -1,5 +1,8 @@
 package com.ksh.shopping_system.common.type;
 
+import lombok.Getter;
+
+@Getter
 public class Price {
 	private long price;
 
