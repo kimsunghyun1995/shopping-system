@@ -1,7 +1,5 @@
 package com.ksh.shopping_system.domain;
 
-import lombok.EqualsAndHashCode;
-
 public class Category {
 	private final String name;
 
