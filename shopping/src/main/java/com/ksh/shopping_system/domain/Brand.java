@@ -1,7 +1,5 @@
 package com.ksh.shopping_system.domain;
 
-import java.util.Objects;
-
 public class Brand {
 	private final String name;
 
