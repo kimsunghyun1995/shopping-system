@@ -18,4 +18,9 @@ public class BaseResponse {
 		this.resultMessage = resultMessage;
 	}
 
+	public BaseResponse(String resultMessage) {
+		this.resultCode = "0000";
+		this.resultMessage = resultMessage;
+	}
+
 }
