@@ -17,17 +17,19 @@ public class ProductMapper {
 	private final CategoryMapper categoryMapper;
 
 	public Product toDomain(ProductEntity entity) {
-		if (entity == null) return null;
+		if (entity == null)
+			return null;
 
 		Brand Brand = brandMapper.toDomain(entity.getBrand());
 		Category Category = categoryMapper.toDomain(entity.getCategory());
 		Price price = new Price(entity.getPrice().longValue()); // BigDecimal -> long 변환 등 정책에 맞게
 
-		return new Product(Brand, Category, price);
+		return new Product(entity.getId(), Brand, Category, price);
 	}
 
 	public ProductEntity toEntity(Product domain) {
-		if (domain == null) return null;
+		if (domain == null)
+			return null;
 
 		var brandEntity = brandMapper.toEntity(domain.getBrand());
 		var categoryEntity = categoryMapper.toEntity(domain.getCategory());
