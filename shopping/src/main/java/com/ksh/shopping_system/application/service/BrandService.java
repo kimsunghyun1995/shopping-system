@@ -6,6 +6,7 @@ import com.ksh.shopping_system.application.port.in.brand.UpdateBrandUseCase;
 import com.ksh.shopping_system.application.port.out.brand.DeleteBrandPort;
 import com.ksh.shopping_system.application.port.out.brand.SaveBrandPort;
 import com.ksh.shopping_system.application.port.out.brand.SelectBrandPort;
+import com.ksh.shopping_system.application.port.out.brand.UpdateBrandPort;
 import com.ksh.shopping_system.domain.Brand;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -19,6 +20,7 @@ public class BrandService
 	private final SelectBrandPort selectBrandPort;
 	private final SaveBrandPort saveBrandPort;
 	private final DeleteBrandPort deleteBrandPort;
+	private final UpdateBrandPort updateBrandPort;
 
 	@Override
 	@Transactional
@@ -33,12 +35,7 @@ public class BrandService
 	@Override
 	@Transactional
 	public Brand updateBrand(Long brandId, String newName) {
-		selectBrandPort.findById(brandId);
-		// 삭제 후 새로 저장하는 예시
-		deleteBrandPort.deleteBrand(brandId);
-
-		Brand newBrand = new Brand(newName);
-		return saveBrandPort.saveBrand(newBrand);
+		return updateBrandPort.updateBrand(brandId, newName);
 	}
 
 	@Override

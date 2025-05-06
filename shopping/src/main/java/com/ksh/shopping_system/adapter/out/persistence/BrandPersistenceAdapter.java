@@ -6,6 +6,7 @@ import com.ksh.shopping_system.adapter.out.persistence.repository.BrandRepositor
 import com.ksh.shopping_system.application.port.out.brand.DeleteBrandPort;
 import com.ksh.shopping_system.application.port.out.brand.SaveBrandPort;
 import com.ksh.shopping_system.application.port.out.brand.SelectBrandPort;
+import com.ksh.shopping_system.application.port.out.brand.UpdateBrandPort;
 import com.ksh.shopping_system.common.response.ErrorCode;
 import com.ksh.shopping_system.domain.Brand;
 import com.ksh.shopping_system.exception.DataNotFoundException;
@@ -15,7 +16,7 @@ import org.springframework.stereotype.Component;
 @Component
 @RequiredArgsConstructor
 public class BrandPersistenceAdapter
-		implements SelectBrandPort, SaveBrandPort, DeleteBrandPort {
+		implements SelectBrandPort, SaveBrandPort, DeleteBrandPort, UpdateBrandPort {
 
 	private final BrandRepository brandRepository;
 	private final BrandMapper brandMapper;
@@ -60,6 +61,18 @@ public class BrandPersistenceAdapter
 						"brand not found ID=" + brandId
 				));
 		brandRepository.delete(brandEntity);
+	}
+
+	@Override
+	public Brand updateBrand(Long brandId, String newBrandName) {
+		var brandEntity = brandRepository.findById(brandId)
+				.orElseThrow(() -> new DataNotFoundException(
+						ErrorCode.BRAND_NOT_FOUND,
+						"brand not found ID=" + brandId
+				));
+
+		brandEntity.updateName(newBrandName);
+		return brandMapper.toDomain(brandEntity);
 	}
 
 }
