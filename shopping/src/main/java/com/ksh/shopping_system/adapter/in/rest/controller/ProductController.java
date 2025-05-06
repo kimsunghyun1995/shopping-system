@@ -1,12 +1,14 @@
 package com.ksh.shopping_system.adapter.in.rest.controller;
 
-import com.ksh.shopping_system.adapter.in.rest.dto.*;
+import com.ksh.shopping_system.adapter.in.rest.dto.BrandMinCombinationResponse;
+import com.ksh.shopping_system.adapter.in.rest.dto.CategoryExtremesResponse;
+import com.ksh.shopping_system.adapter.in.rest.dto.MinPriceByCategoryResponse;
 import com.ksh.shopping_system.application.port.in.brand.CreateBrandUseCase;
 import com.ksh.shopping_system.application.port.in.brand.DeleteBrandUseCase;
 import com.ksh.shopping_system.application.port.in.brand.UpdateBrandUseCase;
-import com.ksh.shopping_system.application.port.in.product.GetMinPriceByCategoryUseCase;
 import com.ksh.shopping_system.application.port.in.product.*;
 import com.ksh.shopping_system.common.response.BaseResponse;
+import com.ksh.shopping_system.domain.CategoryExtremesResult;
 import com.ksh.shopping_system.domain.Product;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -102,141 +104,6 @@ public class ProductController {
 		long total = 0;
 		List<MinPriceByCategoryResponse> result = new ArrayList<>();
 		for (Product p : minProducts) {
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 			result.add(new MinPriceByCategoryResponse(
 					p.getCategory().getName(),
 					p.getBrand().getName(),
@@ -255,7 +122,7 @@ public class ProductController {
 	@GetMapping("/cheapest-brand")
 	public BrandMinCombinationResponse getMinBrandCombination() {
 		var domainResult = getMinBrandCombinationUseCase.getMinBrandCombination();
-		var catPrices = domainResult.getProducts().stream()
+		var catPrices = domainResult.products().stream()
 				.map(p -> new BrandMinCombinationResponse.CategoryPrice(
 						p.getCategory().getName(),
 						p.getPriceValue()
@@ -263,9 +130,9 @@ public class ProductController {
 				.toList();
 
 		return new BrandMinCombinationResponse(
-				domainResult.getBrandName(),
+				domainResult.brandName(),
 				catPrices,
-				domainResult.getTotalPrice().getPrice()
+				domainResult.totalPrice().getPrice()
 		);
 	}
 
@@ -274,19 +141,8 @@ public class ProductController {
 	 */
 	@GetMapping("/category-extremes")
 	public CategoryExtremesResponse getCategoryExtremes(@RequestParam String categoryName) {
-		return getCategoryExtremesUseCase.getCategoryExtremes(categoryName)
-				.map(domainResult -> new CategoryExtremesResponse(
-						domainResult.getCategoryName(),
-						new CategoryExtremesResponse.BrandPrice(
-								domainResult.getMinBrandName(),
-								domainResult.getMinPrice()
-						),
-						new CategoryExtremesResponse.BrandPrice(
-								domainResult.getMaxBrandName(),
-								domainResult.getMaxPrice()
-						)
-				))
-				.orElse(null);
+		CategoryExtremesResult categoryExtremes = getCategoryExtremesUseCase.getCategoryExtremes(categoryName);
+		return CategoryExtremesResponse.of(categoryExtremes);
 	}
 
 }

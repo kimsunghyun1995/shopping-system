@@ -1,6 +1,7 @@
 package com.ksh.shopping_system.adapter.in.rest.dto;
 
 import com.ksh.shopping_system.common.response.BaseResponse;
+import com.ksh.shopping_system.domain.CategoryExtremesResult;
 
 public class CategoryExtremesResponse extends BaseResponse {
 
@@ -12,6 +13,20 @@ public class CategoryExtremesResponse extends BaseResponse {
 		this.category = category;
 		this.minPrice = minPrice;
 		this.maxPrice = maxPrice;
+	}
+
+	public static CategoryExtremesResponse of(CategoryExtremesResult categoryExtremes) {
+		return new CategoryExtremesResponse(
+				categoryExtremes.categoryName(),
+				new CategoryExtremesResponse.BrandPrice(
+						categoryExtremes.minBrandName(),
+						categoryExtremes.minPrice()
+				),
+				new CategoryExtremesResponse.BrandPrice(
+						categoryExtremes.maxBrandName(),
+						categoryExtremes.maxPrice()
+				)
+		);
 	}
 
 	public static class BrandPrice {
