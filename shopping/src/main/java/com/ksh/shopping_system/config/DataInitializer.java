@@ -2,6 +2,7 @@ package com.ksh.shopping_system.config;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
 import com.ksh.shopping_system.adapter.out.persistence.entity.BrandEntity;
@@ -16,6 +17,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 @Component
+@Profile("!test")
 public class DataInitializer implements CommandLineRunner {
 
 	@Autowired
