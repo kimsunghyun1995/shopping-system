@@ -6,7 +6,9 @@ import com.ksh.shopping_system.adapter.out.persistence.repository.BrandRepositor
 import com.ksh.shopping_system.application.port.out.brand.DeleteBrandPort;
 import com.ksh.shopping_system.application.port.out.brand.SaveBrandPort;
 import com.ksh.shopping_system.application.port.out.brand.SelectBrandPort;
+import com.ksh.shopping_system.common.response.ErrorCode;
 import com.ksh.shopping_system.domain.Brand;
+import com.ksh.shopping_system.exception.DataNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -21,16 +23,20 @@ public class BrandPersistenceAdapter
 	@Override
 	public Brand findByName(String name) {
 		BrandEntity brandEntity = brandRepository.findByName(name)
-				.orElseThrow(() -> new IllegalArgumentException("존재하지 않는 브랜드입니다."));
-
+				.orElseThrow(() -> new DataNotFoundException(
+						ErrorCode.BRAND_NOT_FOUND,
+						"brand not found: " + name
+				));
 		return brandMapper.toDomain(brandEntity);
 	}
 
 	@Override
 	public Brand findById(Long brandId) {
 		BrandEntity brandEntity = brandRepository.findById(brandId)
-				.orElseThrow(() -> new IllegalArgumentException("존재하지 않는 브랜드입니다."));
-
+				.orElseThrow(() -> new DataNotFoundException(
+						ErrorCode.BRAND_NOT_FOUND,
+						"brand not found ID=" + brandId
+				));
 		return brandMapper.toDomain(brandEntity);
 	}
 
@@ -49,7 +55,11 @@ public class BrandPersistenceAdapter
 	@Override
 	public void deleteBrand(Long brandId) {
 		var brandEntity = brandRepository.findById(brandId)
-				.orElseThrow(() -> new IllegalArgumentException("존재하지 않는 브랜드입니다."));
+				.orElseThrow(() -> new DataNotFoundException(
+						ErrorCode.BRAND_NOT_FOUND,
+						"brand not found ID=" + brandId
+				));
 		brandRepository.delete(brandEntity);
 	}
+
 }

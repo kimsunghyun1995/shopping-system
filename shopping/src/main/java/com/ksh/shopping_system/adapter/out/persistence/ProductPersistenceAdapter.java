@@ -5,7 +5,10 @@ import com.ksh.shopping_system.adapter.out.persistence.dto.CategoryMinPriceProje
 import com.ksh.shopping_system.adapter.out.persistence.entity.ProductEntity;
 import com.ksh.shopping_system.adapter.out.persistence.mapper.ProductMapper;
 import com.ksh.shopping_system.adapter.out.persistence.repository.ProductRepository;
-import com.ksh.shopping_system.application.port.out.product.*;
+import com.ksh.shopping_system.application.port.out.product.DeleteProductPort;
+import com.ksh.shopping_system.application.port.out.product.SaveProductPort;
+import com.ksh.shopping_system.application.port.out.product.SelectProductPort;
+import com.ksh.shopping_system.application.port.out.product.UpdateProductPort;
 import com.ksh.shopping_system.common.response.ErrorCode;
 import com.ksh.shopping_system.domain.Product;
 import com.ksh.shopping_system.exception.DataNotFoundException;
@@ -39,8 +42,10 @@ public class ProductPersistenceAdapter
 	@Override
 	public Product findById(Long productId) {
 		ProductEntity productEntity = productRepository.findById(productId)
-				.orElseThrow(() -> new DataNotFoundException(ErrorCode.DATA_NOT_FOUND, "product not found: " + productId));
-
+				.orElseThrow(() -> new DataNotFoundException(
+						ErrorCode.PRODUCT_NOT_FOUND,
+						"product not found: " + productId
+				));
 		return productMapper.toDomain(productEntity);
 	}
 
@@ -58,43 +63,62 @@ public class ProductPersistenceAdapter
 
 	@Override
 	public Product updateProduct(Product product) {
-		var entity = productMapper.toEntity(product);
-
-		ProductEntity oldEntity = productRepository.findById(entity.getId())
-				.orElseThrow(() -> new DataNotFoundException(ErrorCode.DATA_NOT_FOUND, "product not found: " + entity.getId()));
-
-		oldEntity.changePrice(entity.getPrice());
-
-		return productMapper.toDomain(entity);
+		// DB에서 기존 엔티티 조회
+		ProductEntity oldEntity = productRepository.findById(product.getId())
+				.orElseThrow(() -> new DataNotFoundException(
+						ErrorCode.PRODUCT_NOT_FOUND,
+						"product not found: " + product.getId()
+				));
+		// 가격 갱신
+		oldEntity.changePrice(product.getPriceValue());
+		// 나머지 업데이트(필요하다면)
+		return productMapper.toDomain(oldEntity);
 	}
 
 	@Override
 	public Product updateProductPrice(Long productId, Long price) {
 		ProductEntity oldEntity = productRepository.findById(productId)
-				.orElseThrow(() -> new DataNotFoundException(ErrorCode.DATA_NOT_FOUND, "product not found: " + productId));
-
+				.orElseThrow(() -> new DataNotFoundException(
+						ErrorCode.PRODUCT_NOT_FOUND,
+						"product not found: " + productId
+				));
 		oldEntity.changePrice(price);
-
 		return productMapper.toDomain(oldEntity);
 	}
 
 	@Override
 	public void deleteProduct(Long productId) {
 		var entity = productRepository.findById(productId)
-				.orElseThrow(() -> new IllegalArgumentException("상품 없음"));
+				.orElseThrow(() -> new DataNotFoundException(
+						ErrorCode.PRODUCT_NOT_FOUND,
+						"product not found: " + productId
+				));
 		productRepository.delete(entity);
 	}
 
 	@Override
 	public Product findLowestPriceByCategory(String categoryName) {
 		ProductEntity productEntity = productRepository.findLowestPriceByCategoryName(categoryName)
-				.orElseThrow(() -> new DataNotFoundException(ErrorCode.DATA_NOT_FOUND, "category not found: " + categoryName));
+				.orElseThrow(() -> new DataNotFoundException(
+						ErrorCode.PRODUCT_NOT_FOUND,
+						"category not found or no products: " + categoryName
+				));
 		return productMapper.toDomain(productEntity);
 	}
 
 	@Override
-	public List<Product> findByBrandName(String cheapestBrand) {
-		return productRepository.findByBrandName(cheapestBrand).stream()
+	public Product findHighestPriceByCategory(String categoryName) {
+		ProductEntity productEntity = productRepository.findHighestPriceByCategoryName(categoryName)
+				.orElseThrow(() -> new DataNotFoundException(
+						ErrorCode.PRODUCT_NOT_FOUND,
+						"category not found or no products: " + categoryName
+				));
+		return productMapper.toDomain(productEntity);
+	}
+
+	@Override
+	public List<Product> findByBrandName(String brandName) {
+		return productRepository.findByBrandName(brandName).stream()
 				.map(productMapper::toDomain)
 				.toList();
 	}
@@ -105,3 +129,4 @@ public class ProductPersistenceAdapter
 	}
 
 }
+

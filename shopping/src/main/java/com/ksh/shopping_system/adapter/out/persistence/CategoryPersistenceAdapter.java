@@ -4,7 +4,9 @@ import com.ksh.shopping_system.adapter.out.persistence.entity.CategoryEntity;
 import com.ksh.shopping_system.adapter.out.persistence.mapper.CategoryMapper;
 import com.ksh.shopping_system.adapter.out.persistence.repository.CategoryRepository;
 import com.ksh.shopping_system.application.port.out.category.SelectCategoryPort;
+import com.ksh.shopping_system.common.response.ErrorCode;
 import com.ksh.shopping_system.domain.Category;
+import com.ksh.shopping_system.exception.DataNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -21,16 +23,20 @@ public class CategoryPersistenceAdapter
 	@Override
 	public Category findByName(String name) {
 		CategoryEntity categoryEntity = categoryRepository.findByName(name)
-				.orElseThrow(() -> new IllegalArgumentException("카테고리 없음: " + name));
-
+				.orElseThrow(() -> new DataNotFoundException(
+						ErrorCode.CATEGORY_NOT_FOUND,
+						"category not found: " + name
+				));
 		return categoryMapper.toDomain(categoryEntity);
 	}
 
 	@Override
 	public Category findById(Long categoryId) {
 		CategoryEntity categoryEntity = categoryRepository.findById(categoryId)
-				.orElseThrow(() -> new IllegalArgumentException("카테고리 없음: " + categoryId));
-
+				.orElseThrow(() -> new DataNotFoundException(
+						ErrorCode.CATEGORY_NOT_FOUND,
+						"category not found: ID=" + categoryId
+				));
 		return categoryMapper.toDomain(categoryEntity);
 	}
 

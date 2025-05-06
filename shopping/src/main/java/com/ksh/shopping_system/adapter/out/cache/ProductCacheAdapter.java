@@ -19,8 +19,9 @@ public class ProductCacheAdapter implements ProductCachePort {
 	private final ProductMapper productMapper;
 
 	@Override
-	public void putMinPrice(String categoryName, MinPriceCacheValue value) {
-		minPriceCache.put(categoryName, value);
+	public void putMinPrice(String categoryName, Product product) {
+		MinPriceCacheValue minPriceCacheValue = new MinPriceCacheValue(product.getId(), product.getBrand().getName(), product.getPriceValue());
+		minPriceCache.put(categoryName, minPriceCacheValue);
 	}
 
 	@Override
@@ -35,8 +36,9 @@ public class ProductCacheAdapter implements ProductCachePort {
 	}
 
 	@Override
-	public void putMaxPrice(String categoryName, MaxPriceCacheValue value) {
-		maxPriceCache.put(categoryName, value);
+	public void putMaxPrice(String categoryName, Product product) {
+		MaxPriceCacheValue maxPriceCacheValue = new MaxPriceCacheValue(product.getId(), product.getBrand().getName(), product.getPriceValue());
+		maxPriceCache.put(categoryName, maxPriceCacheValue);
 	}
 
 	@Override
