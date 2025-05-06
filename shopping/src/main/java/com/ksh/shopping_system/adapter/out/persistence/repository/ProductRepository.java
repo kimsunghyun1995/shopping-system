@@ -22,6 +22,12 @@ public interface ProductRepository extends JpaRepository<ProductEntity, Long> {
 			"ORDER BY p.price ASC LIMIT 1")
 	Optional<ProductEntity> findLowestPriceByCategoryName(String categoryName);
 
+	// 특정 카데고리에 상품 중 최고가
+	@Query("SELECT p FROM ProductEntity p " +
+			"WHERE p.category.name = :categoryName " +
+			"ORDER BY p.price DESC LIMIT 1")
+	Optional<ProductEntity> findHighestPriceByCategoryName(String categoryName);
+
 	// 카데고리별 최저가
 	@Query("SELECT p.category.name AS categoryName, p.brand.name, MIN(p.price) AS minPrice " +
 			"FROM ProductEntity p " +

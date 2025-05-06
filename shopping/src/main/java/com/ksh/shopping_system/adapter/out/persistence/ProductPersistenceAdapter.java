@@ -2,8 +2,12 @@ package com.ksh.shopping_system.adapter.out.persistence;
 
 import com.ksh.shopping_system.adapter.out.persistence.dto.BrandSumProjection;
 import com.ksh.shopping_system.adapter.out.persistence.dto.CategoryMinPriceProjection;
+import com.ksh.shopping_system.adapter.out.persistence.entity.BrandEntity;
+import com.ksh.shopping_system.adapter.out.persistence.entity.CategoryEntity;
 import com.ksh.shopping_system.adapter.out.persistence.entity.ProductEntity;
 import com.ksh.shopping_system.adapter.out.persistence.mapper.ProductMapper;
+import com.ksh.shopping_system.adapter.out.persistence.repository.BrandRepository;
+import com.ksh.shopping_system.adapter.out.persistence.repository.CategoryRepository;
 import com.ksh.shopping_system.adapter.out.persistence.repository.ProductRepository;
 import com.ksh.shopping_system.application.port.out.product.DeleteProductPort;
 import com.ksh.shopping_system.application.port.out.product.SaveProductPort;
@@ -13,16 +17,20 @@ import com.ksh.shopping_system.common.response.ErrorCode;
 import com.ksh.shopping_system.domain.Product;
 import com.ksh.shopping_system.exception.DataNotFoundException;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
 
+@Slf4j
 @Component
 @RequiredArgsConstructor
 public class ProductPersistenceAdapter
 		implements SelectProductPort, SaveProductPort, UpdateProductPort, DeleteProductPort {
 
 	private final ProductRepository productRepository;
+	private final BrandRepository brandRepository;
+	private final CategoryRepository categoryRepository;
 	private final ProductMapper productMapper;
 
 	@Override
@@ -59,6 +67,21 @@ public class ProductPersistenceAdapter
 		var entity = productMapper.toEntity(product);
 		var saved = productRepository.save(entity);
 		return productMapper.toDomain(saved);
+	}
+
+	@Override
+	public Product saveProduct(String brandName, String categoryName, long priceValue) {
+		BrandEntity brandEntity = brandRepository.findByName(brandName)
+				.orElseThrow(() -> new DataNotFoundException(
+						ErrorCode.PRODUCT_NOT_FOUND,
+						"brand not found: " + brandName));
+		CategoryEntity categoryEntity = categoryRepository.findByName(categoryName)
+				.orElseThrow(() -> new DataNotFoundException(
+						ErrorCode.PRODUCT_NOT_FOUND,
+						"category not found: " + categoryName));
+		ProductEntity productEntity = new ProductEntity(brandEntity, categoryEntity, priceValue);
+		ProductEntity save = productRepository.save(productEntity);
+		return productMapper.toDomain(save);
 	}
 
 	@Override

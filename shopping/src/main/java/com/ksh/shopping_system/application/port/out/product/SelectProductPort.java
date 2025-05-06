@@ -11,6 +11,7 @@ public interface SelectProductPort {
 	Product findById(Long productId);
 	List<CategoryMinPriceProjection> findCategoryMinPrice();
 	Product findLowestPriceByCategory(String categoryName);
+	Product findHighestPriceByCategory(String categoryName);
 	List<Product> findByBrandName(String cheapestBrand);
 	List<BrandSumProjection> findBrandSum();
 }

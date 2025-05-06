@@ -1,15 +1,15 @@
 package com.ksh.shopping_system.application.service;
 
-import com.ksh.shopping_system.adapter.out.cache.dto.MaxPriceCacheValue;
-import com.ksh.shopping_system.adapter.out.cache.dto.MinPriceCacheValue;
 import com.ksh.shopping_system.adapter.out.persistence.dto.BrandSumProjection;
 import com.ksh.shopping_system.application.port.in.product.*;
 import com.ksh.shopping_system.application.port.out.brand.BrandCachePort;
 import com.ksh.shopping_system.application.port.out.brand.SelectBrandPort;
 import com.ksh.shopping_system.application.port.out.category.SelectCategoryPort;
 import com.ksh.shopping_system.application.port.out.product.*;
+import com.ksh.shopping_system.common.response.ErrorCode;
 import com.ksh.shopping_system.common.type.Price;
 import com.ksh.shopping_system.domain.*;
+import com.ksh.shopping_system.exception.DataNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -42,15 +42,9 @@ public class ProductService implements
 	@Override
 	@Transactional
 	public Product createProduct(String brandName, String categoryName, long priceValue) {
-		// Brand, Category를 조회
-		Brand brand = selectBrandPort.findByName(brandName);
 		Category category = selectCategoryPort.findByName(categoryName);
+		Product product = saveProductPort.saveProduct(brandName, categoryName, priceValue);
 
-		Product product = new Product(brand, category, new Price(priceValue));
-
-		saveProductPort.saveProduct(product);
-
-		//
 		updateMinPriceCache(category, product);
 		updateMaxPriceCache(category, product);
 
@@ -76,8 +70,10 @@ public class ProductService implements
 		// 브랜드 총합 캐시 가격 업데이트
 		Long oldTotal = brandCachePort.getBrandTotal(brandName);
 		if (oldTotal == null) {
-			// todo: 익셉션 구체화
-			throw new IllegalArgumentException("브랜드 없음: " + brandName);
+			throw new DataNotFoundException(
+					ErrorCode.BRAND_CACHE_NOT_FOUND,
+					"브랜드 캐시에 해당 브랜드가 없습니다: " + brandName
+			);
 		}
 		long newTotal = oldTotal - oldProduct.getPriceValue() + newPriceValue;
 		brandCachePort.putBrandTotal(brandName, newTotal);
@@ -139,12 +135,7 @@ public class ProductService implements
 				Product minProduct = selectProductPort.findLowestPriceByCategory(categoryName);
 				result.add(minProduct);
 				// put cache
-				MinPriceCacheValue value = new MinPriceCacheValue(
-						minProduct.getId(),
-						minProduct.getBrand().getName(),
-						minProduct.getPriceValue()
-				);
-				productCachePort.putMinPrice(categoryName, value);
+				productCachePort.putMinPrice(categoryName, minProduct);
 			}
 		}
 		return result;
@@ -187,37 +178,6 @@ public class ProductService implements
 		);
 	}
 
-
-	private void updateMinPriceCache(Category category, Product product) {
-		// 1) 현재 캐시값
-		Product minPriceProduct = productCachePort.getMinPrice(category);
-		// 2) 비교
-		if (minPriceProduct == null || product.getPriceValue() < minPriceProduct.getPriceValue()) {
-			productCachePort.putMinPrice(category.getName(),
-					new MinPriceCacheValue(
-							product.getId(),
-							product.getBrand().getName(),
-							product.getPriceValue()
-					)
-			);
-		}
-	}
-
-	private void updateMaxPriceCache(Category category, Product product) {
-		// 1) 현재 캐시값
-		Product maxPriceProduct = productCachePort.getMaxPrice(category);
-		// 2) 비교
-		if (maxPriceProduct == null || product.getPriceValue() > maxPriceProduct.getPriceValue()) {
-			productCachePort.putMaxPrice(category.getName(),
-					new MaxPriceCacheValue(
-							product.getId(),
-							product.getBrand().getName(),
-							product.getPriceValue()
-					)
-			);
-		}
-	}
-
 	@Override
 	public CategoryExtremesResult getCategoryExtremes(String categoryName) {
 		Category category = selectCategoryPort.findByName(categoryName);
@@ -225,10 +185,30 @@ public class ProductService implements
 		Product maxPriceProduct = productCachePort.getMaxPrice(category);
 		Product minPriceProduct = productCachePort.getMinPrice(category);
 
-		// 둘중의 하나라도 null 이면 문제발생
+		// 캐시 값이 없다면 DB fallback
 		if (maxPriceProduct == null || minPriceProduct == null) {
-			// todo: 익셉션 값 추가
-			throw new IllegalArgumentException();
+			// DB에서 최저/최고가 조회
+			Product dbMinProduct = selectProductPort.findLowestPriceByCategory(categoryName);
+			Product dbMaxProduct = selectProductPort.findHighestPriceByCategory(categoryName);
+
+			if (dbMinProduct == null || dbMaxProduct == null) {
+				// DB에서도 상품이 없으면 -> 카테고리에 상품이 없는 상황
+				throw new DataNotFoundException(
+						ErrorCode.PRODUCT_NOT_FOUND,
+						"No products found for category: " + categoryName
+				);
+			}
+
+			// 3-2) 캐시에 put
+			productCachePort.putMinPrice(categoryName, dbMinProduct);
+			productCachePort.putMaxPrice(categoryName, dbMaxProduct);
+
+			// 3-3) 결과 객체 반환
+			return new CategoryExtremesResult(
+					categoryName,
+					dbMinProduct.getBrand().getName(), dbMinProduct.getPriceValue(),
+					dbMaxProduct.getBrand().getName(), dbMaxProduct.getPriceValue()
+			);
 		}
 
 		return new CategoryExtremesResult(
@@ -237,6 +217,24 @@ public class ProductService implements
 				minPriceProduct.getPriceValue(),
 				maxPriceProduct.getBrand().getName(),
 				maxPriceProduct.getPriceValue());
+	}
+
+	private void updateMinPriceCache(Category category, Product product) {
+		// 현재 캐시값
+		Product minPriceProduct = productCachePort.getMinPrice(category);
+		// 비교
+		if (minPriceProduct == null || product.getPriceValue() < minPriceProduct.getPriceValue()) {
+			productCachePort.putMinPrice(category.getName(), product);
+		}
+	}
+
+	private void updateMaxPriceCache(Category category, Product product) {
+		// 현재 캐시값
+		Product maxPriceProduct = productCachePort.getMaxPrice(category);
+		// 비교
+		if (maxPriceProduct == null || product.getPriceValue() > maxPriceProduct.getPriceValue()) {
+			productCachePort.putMaxPrice(category.getName(), product);
+		}
 	}
 
 }
