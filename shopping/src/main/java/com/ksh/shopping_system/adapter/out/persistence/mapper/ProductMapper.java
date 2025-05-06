@@ -1,6 +1,8 @@
 package com.ksh.shopping_system.adapter.out.persistence.mapper;
 
 
+import com.ksh.shopping_system.adapter.out.cache.dto.MaxPriceCacheValue;
+import com.ksh.shopping_system.adapter.out.cache.dto.MinPriceCacheValue;
 import com.ksh.shopping_system.adapter.out.persistence.entity.ProductEntity;
 import com.ksh.shopping_system.common.type.Price;
 import com.ksh.shopping_system.domain.Brand;
@@ -39,4 +41,21 @@ public class ProductMapper {
 				domain.getPriceValue()
 		);
 	}
+
+	public Product minPriceCacheToDomain(MinPriceCacheValue cacheValue,  Category category) {
+		if (cacheValue == null)
+			return null;
+		Brand brand = new Brand(cacheValue.getBrandName());
+		Price price = new Price(cacheValue.getPrice());
+		return new Product(brand, category, price);
+	}
+
+	public Product maxPriceCacheToDomain(MaxPriceCacheValue maxPriceCacheValue, Category category) {
+		if (maxPriceCacheValue == null)
+			return null;
+		Brand brand = new Brand(maxPriceCacheValue.getBrandName());
+		Price price = new Price(maxPriceCacheValue.getPrice());
+		return new Product(brand, category, price);
+	}
+
 }

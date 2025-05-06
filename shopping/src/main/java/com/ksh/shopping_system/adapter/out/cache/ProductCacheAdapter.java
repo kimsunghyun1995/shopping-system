@@ -3,7 +3,10 @@ package com.ksh.shopping_system.adapter.out.cache;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.ksh.shopping_system.adapter.out.cache.dto.MaxPriceCacheValue;
 import com.ksh.shopping_system.adapter.out.cache.dto.MinPriceCacheValue;
+import com.ksh.shopping_system.adapter.out.persistence.mapper.ProductMapper;
 import com.ksh.shopping_system.application.port.out.product.ProductCachePort;
+import com.ksh.shopping_system.domain.Category;
+import com.ksh.shopping_system.domain.Product;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -13,6 +16,7 @@ public class ProductCacheAdapter implements ProductCachePort {
 
 	private final Cache<String, MinPriceCacheValue> minPriceCache;
 	private final Cache<String, MaxPriceCacheValue> maxPriceCache;
+	private final ProductMapper productMapper;
 
 	@Override
 	public void putMinPrice(String categoryName, MinPriceCacheValue value) {
@@ -20,8 +24,9 @@ public class ProductCacheAdapter implements ProductCachePort {
 	}
 
 	@Override
-	public MinPriceCacheValue getMinPrice(String categoryName) {
-		return minPriceCache.getIfPresent(categoryName);
+	public Product getMinPrice(Category category) {
+		MinPriceCacheValue minPriceCacheValue = minPriceCache.getIfPresent(category.getName());
+		return productMapper.minPriceCacheToDomain(minPriceCacheValue, category);
 	}
 
 	@Override
@@ -35,8 +40,9 @@ public class ProductCacheAdapter implements ProductCachePort {
 	}
 
 	@Override
-	public MaxPriceCacheValue getMaxPrice(String categoryName) {
-		return maxPriceCache.getIfPresent(categoryName);
+	public Product getMaxPrice(Category category) {
+		MaxPriceCacheValue maxPriceCacheValue = maxPriceCache.getIfPresent(category.getName());
+		return productMapper.maxPriceCacheToDomain(maxPriceCacheValue, category);
 	}
 
 	@Override

@@ -9,8 +9,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
-import java.util.Optional;
-import java.util.stream.Stream;
 
 @Component
 @RequiredArgsConstructor
@@ -21,15 +19,19 @@ public class CategoryPersistenceAdapter
 	private final CategoryMapper categoryMapper;
 
 	@Override
-	public Optional<Category> findByName(String name) {
-		return categoryRepository.findByName(name)
-				.map(categoryMapper::toDomain);
+	public Category findByName(String name) {
+		CategoryEntity categoryEntity = categoryRepository.findByName(name)
+				.orElseThrow(() -> new IllegalArgumentException("카테고리 없음: " + name));
+
+		return categoryMapper.toDomain(categoryEntity);
 	}
 
 	@Override
-	public Optional<Category> findById(Long categoryId) {
-		return categoryRepository.findById(categoryId)
-				.map(categoryMapper::toDomain);
+	public Category findById(Long categoryId) {
+		CategoryEntity categoryEntity = categoryRepository.findById(categoryId)
+				.orElseThrow(() -> new IllegalArgumentException("카테고리 없음: " + categoryId));
+
+		return categoryMapper.toDomain(categoryEntity);
 	}
 
 	@Override

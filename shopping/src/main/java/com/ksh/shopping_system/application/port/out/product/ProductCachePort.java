@@ -2,6 +2,8 @@ package com.ksh.shopping_system.application.port.out.product;
 
 import com.ksh.shopping_system.adapter.out.cache.dto.MaxPriceCacheValue;
 import com.ksh.shopping_system.adapter.out.cache.dto.MinPriceCacheValue;
+import com.ksh.shopping_system.domain.Category;
+import com.ksh.shopping_system.domain.Product;
 
 public interface ProductCachePort {
 	/**
@@ -12,7 +14,7 @@ public interface ProductCachePort {
 	/**
 	 * 카테고리 최저가 get(key)
 	 */
-	MinPriceCacheValue getMinPrice(String categoryName);
+	Product getMinPrice(Category category);
 
 	/**
 	 * 카테고리 최저가 삭제
@@ -27,7 +29,7 @@ public interface ProductCachePort {
 	/**
 	 * 카테고리 최고가 get(key)
 	 */
-	MaxPriceCacheValue getMaxPrice(String categoryName);
+	Product getMaxPrice(Category category);
 
 	/**
 	 * 카테고리 최고가 삭제

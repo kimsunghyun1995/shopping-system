@@ -11,8 +11,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.NoSuchElementException;
-
 @Service
 @RequiredArgsConstructor
 public class BrandService
@@ -35,10 +33,7 @@ public class BrandService
 	@Override
 	@Transactional
 	public Brand updateBrand(Long brandId, String newName) {
-		var brandOpt = selectBrandPort.findById(brandId);
-		if (brandOpt.isEmpty()) {
-			throw new NoSuchElementException("존재하지 않는 브랜드. ID=" + brandId);
-		}
+		selectBrandPort.findById(brandId);
 		// 삭제 후 새로 저장하는 예시
 		deleteBrandPort.deleteBrand(brandId);
 

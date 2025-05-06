@@ -6,9 +6,9 @@ import java.util.List;
 import java.util.Optional;
 
 public interface SelectCategoryPort {
-	Optional<Category> findByName(String name);
+	Category findByName(String name);
 
-	Optional<Category> findById(Long categoryId);
+	Category findById(Long categoryId);
 
 	List<Category> findAllCategoryNames();
 
