@@ -1,5 +1,6 @@
 package com.ksh.shopping_system.adapter.out.persistence;
 
+import com.ksh.shopping_system.adapter.out.persistence.dto.BrandSumProjection;
 import com.ksh.shopping_system.adapter.out.persistence.dto.CategoryMinPriceProjection;
 import com.ksh.shopping_system.adapter.out.persistence.entity.ProductEntity;
 import com.ksh.shopping_system.adapter.out.persistence.mapper.ProductMapper;
@@ -12,7 +13,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
-import java.util.Optional;
 
 @Component
 @RequiredArgsConstructor
@@ -90,6 +90,18 @@ public class ProductPersistenceAdapter
 		ProductEntity productEntity = productRepository.findLowestPriceByCategoryName(categoryName)
 				.orElseThrow(() -> new DataNotFoundException(ErrorCode.DATA_NOT_FOUND, "category not found: " + categoryName));
 		return productMapper.toDomain(productEntity);
+	}
+
+	@Override
+	public List<Product> findByBrandName(String cheapestBrand) {
+		return productRepository.findByBrandName(cheapestBrand).stream()
+				.map(productMapper::toDomain)
+				.toList();
+	}
+
+	@Override
+	public List<BrandSumProjection> findBrandSum() {
+		return productRepository.findBrandSum();
 	}
 
 }

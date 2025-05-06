@@ -1,21 +1,22 @@
 package com.ksh.shopping_system.application.service;
 
+import com.ksh.shopping_system.adapter.out.cache.dto.MaxPriceCacheValue;
 import com.ksh.shopping_system.adapter.out.cache.dto.MinPriceCacheValue;
+import com.ksh.shopping_system.adapter.out.persistence.dto.BrandSumProjection;
 import com.ksh.shopping_system.application.port.in.product.*;
+import com.ksh.shopping_system.application.port.out.brand.BrandCachePort;
 import com.ksh.shopping_system.application.port.out.brand.SelectBrandPort;
 import com.ksh.shopping_system.application.port.out.category.SelectCategoryPort;
 import com.ksh.shopping_system.application.port.out.product.*;
 import com.ksh.shopping_system.common.type.Price;
-import com.ksh.shopping_system.domain.Brand;
-import com.ksh.shopping_system.domain.Category;
-import com.ksh.shopping_system.domain.Product;
-import lombok.Getter;
+import com.ksh.shopping_system.domain.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.*;
-import java.util.stream.Collectors;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -34,6 +35,8 @@ public class ProductService implements
 	private final ProductCachePort productCachePort;
 
 	private final SelectBrandPort selectBrandPort;
+	private final BrandCachePort brandCachePort;
+
 	private final SelectCategoryPort selectCategoryPort;
 
 	@Override
@@ -50,7 +53,14 @@ public class ProductService implements
 
 		saveProductPort.saveProduct(product);
 
+		//
 		updateMinPriceCache(categoryName, product);
+		updateMaxPriceCache(categoryName, product);
+
+		// 브랜드 총합 캐시 업데이트
+		Long oldTotal = brandCachePort.getBrandTotal(brandName);
+		long newTotal = (oldTotal == null ? 0 : oldTotal) + priceValue;
+		brandCachePort.putBrandTotal(brandName, newTotal);
 
 		return product;
 
@@ -59,10 +69,22 @@ public class ProductService implements
 	@Override
 	@Transactional
 	public Product updateProduct(Long productId, long newPriceValue) {
+		Product oldProduct = selectProductPort.findById(productId);
 		Product product = updateProductPort.updateProductPrice(productId, newPriceValue);
 		String categoryName = product.getCategory().getName();
+		String brandName = product.getBrand().getName();
 
 		updateMinPriceCache(categoryName, product);
+		updateMaxPriceCache(categoryName, product);
+
+		// 브랜드 총합 캐시 가격 업데이트
+		Long oldTotal = brandCachePort.getBrandTotal(brandName);
+		if (oldTotal == null) {
+			// todo: 익셉션 구체화
+			throw new IllegalArgumentException("브랜드 없음: " + brandName);
+		}
+		long newTotal = oldTotal - oldProduct.getPriceValue() + newPriceValue;
+		brandCachePort.putBrandTotal(brandName, newTotal);
 
 		return product;
 	}
@@ -71,14 +93,36 @@ public class ProductService implements
 	@Transactional
 	public void deleteProduct(Long productId) {
 		Product product = selectProductPort.findById(productId);
+		long oldPrice = product.getPriceValue();
+		String brandName = product.getBrand().getName();
+
 		deleteProductPort.deleteProduct(productId);
 
 		String categoryName = product.getCategory().getName();
 
 		MinPriceCacheValue minPrice = productCachePort.getMinPrice(categoryName);
+		MaxPriceCacheValue maxPrice = productCachePort.getMaxPrice(categoryName);
+
 		if (minPrice.getPrdouctId() == productId) {
 			productCachePort.removeMinPrice(categoryName);
 		}
+
+		if (maxPrice.getPrdouctId() == productId) {
+			productCachePort.removeMaxPrice(categoryName);
+		}
+
+		// 브랜드 총합 캐시 갱신
+		Long oldTotal = brandCachePort.getBrandTotal(brandName);
+		if (oldTotal == null)
+			oldTotal = 0L;
+		long newTotal = oldTotal - oldPrice;
+		if (newTotal <= 0) {
+			// 더 이상 상품이 없다면 remove
+			brandCachePort.removeBrand(brandName);
+		} else {
+			brandCachePort.putBrandTotal(brandName, newTotal);
+		}
+
 	}
 
 	@Override
@@ -112,54 +156,41 @@ public class ProductService implements
 		return result;
 	}
 
-	@Override
 	@Transactional(readOnly = true)
 	public CheapestBrandResult getMinBrandCombination() {
-		List<Product> allProducts = selectProductPort.findAllProducts();
+		// 1) 캐시에서 모든 (brand, totalPrice) 조회
+		Map<String, Long> brandMap = brandCachePort.asMap();
 
-		Map<String, List<Product>> brandMap =
-				allProducts.stream().collect(Collectors.groupingBy(p -> p.getBrand().getName()));
+		if (brandMap.isEmpty()) {
+			List<BrandSumProjection> sums = selectProductPort.findBrandSum();
 
+			// 캐시에 put
+			for (BrandSumProjection row : sums) {
+				brandCachePort.putBrandTotal(row.getBrandName(), row.getTotalPrice());
+			}
+			// 다시 가져오기
+			brandMap = brandCachePort.asMap();
+		}
+
+		// 2) 최소값 찾기
 		String cheapestBrand = null;
 		long minTotal = Long.MAX_VALUE;
-		List<Product> cheapestList = new ArrayList<>();
-
-		for (var entry : brandMap.entrySet()) {
-			String brandName = entry.getKey();
-			List<Product> products = entry.getValue();
-
-			long sum = 0;
-			for (Product p : products) {
-				sum += p.getPriceValue();
-			}
-			if (sum < minTotal) {
-				minTotal = sum;
-				cheapestBrand = brandName;
-				cheapestList = products;
+		for (Map.Entry<String, Long> e : brandMap.entrySet()) {
+			if (e.getValue() < minTotal) {
+				minTotal = e.getValue();
+				cheapestBrand = e.getKey();
 			}
 		}
 
-		return new CheapestBrandResult(cheapestBrand, new Price(minTotal), cheapestList);
-	}
+		// 3) 가장 저렴한 브랜드의 상품 목록 DB 조회
+		List<Product> products = selectProductPort.findByBrandName(cheapestBrand);
 
-	@Override
-	@Transactional(readOnly = true)
-	public Optional<CategoryExtremesResult> getCategoryExtremes(String categoryName) {
-		List<Product> products = selectProductPort.findByCategoryName(categoryName);
-		if (products.isEmpty()) {
-			return Optional.empty();
-		}
-		Product minP = Collections.min(products, Comparator.comparingLong(Product::getPriceValue));
-		Product maxP = Collections.max(products, Comparator.comparingLong(Product::getPriceValue));
-
-		CategoryExtremesResult result = new CategoryExtremesResult(
-				categoryName,
-				minP.getBrand().getName(),
-				minP.getPriceValue(),
-				maxP.getBrand().getName(),
-				maxP.getPriceValue()
+		// 4) 결과 객체 구성
+		return new CheapestBrandResult(
+				cheapestBrand,
+				new Price(minTotal), // Price VO
+				products
 		);
-		return Optional.of(result);
 	}
 
 
@@ -178,47 +209,47 @@ public class ProductService implements
 		}
 	}
 
+	private void updateMaxPriceCache(String categoryName, Product product) {
+		// 1) 현재 캐시값
+		MaxPriceCacheValue existing = productCachePort.getMaxPrice(categoryName);
+		// 2) 비교
+		if (existing == null || product.getPriceValue() > existing.getPrice()) {
+			productCachePort.putMaxPrice(categoryName,
+					new MaxPriceCacheValue(
+							product.getId(),
+							product.getBrand().getName(),
+							product.getPriceValue()
+					)
+			);
+		}
+	}
+
+	@Override
+	public CategoryExtremesResult getCategoryExtremes(String categoryName) {
+		MaxPriceCacheValue maxPrice = productCachePort.getMaxPrice(categoryName);
+		MinPriceCacheValue minPrice = productCachePort.getMinPrice(categoryName);
+
+		// 둘중의 하나라도 null 이면 문제발생
+		if (maxPrice == null || minPrice == null) {
+			// todo: 익셉션 값 추가
+			throw new IllegalArgumentException();
+		}
+
+		return new CategoryExtremesResult(
+				categoryName,
+				minPrice.getBrandName(),
+				minPrice.getPrice(),
+				maxPrice.getBrandName(),
+				maxPrice.getPrice());
+
+	}
+
+	// todo: mapper 로 빠질 수 있을 듯
 	private Product buildProductFromCacheValue(MinPriceCacheValue cached, Category category) {
 		// 캐시에 저장된 정보 -> Domain 객체
 		Brand brand = new Brand(cached.getBrandName());
 		Price price = new Price(cached.getPrice());
 		return new Product(brand, category, price);
-	}
-
-	/* ===================== 내부 결과 객체 ===================== */
-
-	@Getter
-	public static class CheapestBrandResult {
-		private final String brandName;
-		private final Price totalPrice;
-		private final List<Product> products;
-
-		public CheapestBrandResult(String brandName, Price totalPrice, List<Product> products) {
-			this.brandName = brandName;
-			this.totalPrice = totalPrice;
-			this.products = products;
-		}
-	}
-
-	@Getter
-	public static class CategoryExtremesResult {
-		private final String categoryName;
-		private final String minBrandName;
-		private final long minPrice;
-		private final String maxBrandName;
-		private final long maxPrice;
-
-		public CategoryExtremesResult(String categoryName,
-									  String minBrandName,
-									  long minPrice,
-									  String maxBrandName,
-									  long maxPrice) {
-			this.categoryName = categoryName;
-			this.minBrandName = minBrandName;
-			this.minPrice = minPrice;
-			this.maxBrandName = maxBrandName;
-			this.maxPrice = maxPrice;
-		}
 	}
 
 }

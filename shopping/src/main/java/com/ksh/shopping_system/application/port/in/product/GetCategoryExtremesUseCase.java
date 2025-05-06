@@ -1,9 +1,8 @@
 package com.ksh.shopping_system.application.port.in.product;
 
-import com.ksh.shopping_system.application.service.ProductService.CategoryExtremesResult;
 
-import java.util.Optional;
+import com.ksh.shopping_system.domain.CategoryExtremesResult;
 
 public interface GetCategoryExtremesUseCase {
-	Optional<CategoryExtremesResult> getCategoryExtremes(String categoryName);
+	CategoryExtremesResult getCategoryExtremes(String categoryName);
 }

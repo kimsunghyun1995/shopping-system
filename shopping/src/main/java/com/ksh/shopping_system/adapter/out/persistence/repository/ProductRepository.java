@@ -1,5 +1,6 @@
 package com.ksh.shopping_system.adapter.out.persistence.repository;
 
+import com.ksh.shopping_system.adapter.out.persistence.dto.BrandSumProjection;
 import com.ksh.shopping_system.adapter.out.persistence.dto.CategoryMinPriceProjection;
 import com.ksh.shopping_system.adapter.out.persistence.entity.ProductEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -26,5 +27,15 @@ public interface ProductRepository extends JpaRepository<ProductEntity, Long> {
 			"FROM ProductEntity p " +
 			"GROUP BY p.category.name")
 	List<CategoryMinPriceProjection> findCategoryMinPrice();
+
+	@Query("""
+       SELECT p.brand.name AS brandName,
+              SUM(p.price)  AS totalPrice
+         FROM ProductEntity p
+        GROUP BY p.brand.name
+    """)
+	List<BrandSumProjection> findBrandSum();
+
+	List<ProductEntity> findByBrandName(String cheapestBrand);
 
 }
