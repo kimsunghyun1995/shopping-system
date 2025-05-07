@@ -7,8 +7,11 @@ import com.ksh.shopping_system.application.port.out.brand.BrandCachePort;
 import com.ksh.shopping_system.application.port.out.product.ProductCachePort;
 import com.ksh.shopping_system.common.response.ErrorCode;
 import com.ksh.shopping_system.domain.Product;
+import com.ksh.shopping_system.exception.CacheConnectionException;
 import com.ksh.shopping_system.exception.DataNotFoundException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.retry.annotation.Backoff;
+import org.springframework.retry.annotation.Retryable;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.event.TransactionPhase;
@@ -17,6 +20,12 @@ import org.springframework.transaction.event.TransactionalEventListener;
 @Component
 @RequiredArgsConstructor
 @Async("productTaskExecutor")
+// 추후 레디스나 외부 통신 시, 연결 장애 발생 시, `CacheConnectionException` 을 throw 하여 재시도 할 수 있도록 설정
+@Retryable(
+		value = { CacheConnectionException.class }, // 재시도할 예외 타입
+		maxAttempts = 3,
+		backoff = @Backoff(delay = 1000)      // 1초 후 재시도
+)
 public class ProductEventListener {
 
 	private final ProductCachePort productCachePort;
