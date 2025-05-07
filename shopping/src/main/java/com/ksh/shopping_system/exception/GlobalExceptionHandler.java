@@ -11,6 +11,14 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 @RestControllerAdvice
 @Slf4j
 public class GlobalExceptionHandler {
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<ErrorResponse> handleIllegalArgumentException(IllegalArgumentException ex) {
+        ErrorResponse errorResponse = new ErrorResponse(ErrorCode.INVALID_PARAMETER.getCode(), ex.getMessage());
+        log.warn(errorResponse.toString(), ex);
+        return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
+    }
+
     @ExceptionHandler(DataNotFoundException.class)
     public ResponseEntity<ErrorResponse> handleDataNotFoundException(DataNotFoundException ex) {
         ErrorCode errorCode = ex.getErrorCode();
