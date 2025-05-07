@@ -38,4 +38,8 @@ public class Product {
 		return price.getPrice();
 	}
 
+	public boolean isSameProduct(long productId) {
+		return this.id == productId;
+	}
+
 }

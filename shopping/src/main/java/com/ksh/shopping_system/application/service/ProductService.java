@@ -1,16 +1,22 @@
 package com.ksh.shopping_system.application.service;
 
 import com.ksh.shopping_system.adapter.out.persistence.dto.BrandSumProjection;
+import com.ksh.shopping_system.application.event.ProductCreatedEvent;
+import com.ksh.shopping_system.application.event.ProductDeletedEvent;
+import com.ksh.shopping_system.application.event.ProductUpdatedEvent;
 import com.ksh.shopping_system.application.port.in.product.*;
 import com.ksh.shopping_system.application.port.out.brand.BrandCachePort;
-import com.ksh.shopping_system.application.port.out.brand.SelectBrandPort;
 import com.ksh.shopping_system.application.port.out.category.SelectCategoryPort;
 import com.ksh.shopping_system.application.port.out.product.*;
 import com.ksh.shopping_system.common.response.ErrorCode;
 import com.ksh.shopping_system.common.type.Price;
-import com.ksh.shopping_system.domain.*;
+import com.ksh.shopping_system.domain.Category;
+import com.ksh.shopping_system.domain.CategoryExtremesResult;
+import com.ksh.shopping_system.domain.CheapestBrandResult;
+import com.ksh.shopping_system.domain.Product;
 import com.ksh.shopping_system.exception.DataNotFoundException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -34,16 +40,19 @@ public class ProductService implements
 	private final DeleteProductPort deleteProductPort;
 	private final ProductCachePort productCachePort;
 
-	private final SelectBrandPort selectBrandPort;
 	private final BrandCachePort brandCachePort;
 
 	private final SelectCategoryPort selectCategoryPort;
+
+	private final ApplicationEventPublisher eventPublisher;
 
 	@Override
 	@Transactional
 	public Product createProduct(String brandName, String categoryName, long priceValue) {
 		Category category = selectCategoryPort.findByName(categoryName);
 		Product product = saveProductPort.saveProduct(brandName, categoryName, priceValue);
+
+		eventPublisher.publishEvent(new ProductCreatedEvent(this, product));
 
 		updateMinPriceCache(category, product);
 		updateMaxPriceCache(category, product);
@@ -63,6 +72,8 @@ public class ProductService implements
 		Product oldProduct = selectProductPort.findById(productId);
 		Product product = updateProductPort.updateProductPrice(productId, newPriceValue);
 		String brandName = product.getBrand().getName();
+
+		eventPublisher.publishEvent(new ProductUpdatedEvent(this, oldProduct, product));
 
 		updateMinPriceCache(product.getCategory(), product);
 		updateMaxPriceCache(product.getCategory(), product);
@@ -90,16 +101,18 @@ public class ProductService implements
 
 		deleteProductPort.deleteProduct(productId);
 
+		eventPublisher.publishEvent(new ProductDeletedEvent(this, product));
+
 		String categoryName = product.getCategory().getName();
 
 		Product minPriceProduct = productCachePort.getMinPrice(product.getCategory());
 		Product maxPriceProduct = productCachePort.getMaxPrice(product.getCategory());
 
-		if (minPriceProduct.getId() == productId) {
+		if (minPriceProduct.isSameProduct(productId)) {
 			productCachePort.removeMinPrice(categoryName);
 		}
 
-		if (maxPriceProduct.getId() == productId) {
+		if (maxPriceProduct.isSameProduct(productId)) {
 			productCachePort.removeMaxPrice(categoryName);
 		}
 
@@ -120,10 +133,10 @@ public class ProductService implements
 	@Override
 	@Transactional(readOnly = true)
 	public List<Product> getMinPriceByCategory() {
-		// 1) 카테고리 목록
+		// 카테고리 목록
 		List<Category> categories = selectCategoryPort.findAllCategoryNames();
 
-		// 2) 각 카테고리에 대해 캐시 조회
+		// 각 카테고리에 대해 캐시 조회
 		List<Product> result = new ArrayList<>();
 		for (Category category : categories) {
 			String categoryName = category.getName();
@@ -143,7 +156,7 @@ public class ProductService implements
 
 	@Transactional(readOnly = true)
 	public CheapestBrandResult getMinBrandCombination() {
-		// 1) 캐시에서 모든 (brand, totalPrice) 조회
+		// 캐시에서 모든 (brand, totalPrice) 조회
 		Map<String, Long> brandMap = brandCachePort.asMap();
 
 		if (brandMap.isEmpty()) {
@@ -157,7 +170,7 @@ public class ProductService implements
 			brandMap = brandCachePort.asMap();
 		}
 
-		// 2) 최소값 찾기
+		// 최소값 찾기
 		String cheapestBrand = null;
 		long minTotal = Long.MAX_VALUE;
 		for (Map.Entry<String, Long> e : brandMap.entrySet()) {
@@ -167,7 +180,7 @@ public class ProductService implements
 			}
 		}
 
-		// 3) 가장 저렴한 브랜드의 상품 목록 DB 조회
+		// 가장 저렴한 브랜드의 상품 목록 DB 조회
 		List<Product> products = selectProductPort.findByBrandName(cheapestBrand);
 
 		// 4) 결과 객체 구성
