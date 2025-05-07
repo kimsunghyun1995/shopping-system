@@ -1,19 +1,23 @@
-package com.ksh.shopping_system.application.event;
+package com.ksh.shopping_system.adapter.in.event;
 
+import com.ksh.shopping_system.application.event.ProductCreatedEvent;
+import com.ksh.shopping_system.application.event.ProductDeletedEvent;
+import com.ksh.shopping_system.application.event.ProductUpdatedEvent;
 import com.ksh.shopping_system.application.port.out.brand.BrandCachePort;
 import com.ksh.shopping_system.application.port.out.product.ProductCachePort;
 import com.ksh.shopping_system.common.response.ErrorCode;
 import com.ksh.shopping_system.domain.Product;
 import com.ksh.shopping_system.exception.DataNotFoundException;
 import lombok.RequiredArgsConstructor;
-import org.springframework.context.event.EventListener;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
 
 @Component
 @RequiredArgsConstructor
-public class ProductEventHandler {
+@Async("productTaskExecutor")
+public class ProductEventListener {
 
 	private final ProductCachePort productCachePort;
 	private final BrandCachePort brandCachePort;
