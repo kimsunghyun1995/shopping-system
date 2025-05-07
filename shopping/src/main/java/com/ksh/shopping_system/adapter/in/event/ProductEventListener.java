@@ -22,7 +22,7 @@ import org.springframework.transaction.event.TransactionalEventListener;
 @Async("productTaskExecutor")
 // 추후 레디스나 외부 통신 시, 연결 장애 발생 시, `CacheConnectionException` 을 throw 하여 재시도 할 수 있도록 설정
 @Retryable(
-		value = { CacheConnectionException.class }, // 재시도할 예외 타입
+		value = {CacheConnectionException.class}, // 재시도할 예외 타입
 		maxAttempts = 3,
 		backoff = @Backoff(delay = 1000)      // 1초 후 재시도
 )
@@ -72,15 +72,16 @@ public class ProductEventListener {
 		Product minPriceProduct = productCachePort.getMinPrice(product.getCategory());
 		Product maxPriceProduct = productCachePort.getMaxPrice(product.getCategory());
 
-		if (minPriceProduct != null && minPriceProduct.getId() == product.getId()) {
+		if (minPriceProduct != null && minPriceProduct.isSameProduct(product.getId())) {
 			productCachePort.removeMinPrice(product.getCategory().getName());
 		}
-		if (maxPriceProduct != null && maxPriceProduct.getId() == product.getId()) {
+		if (maxPriceProduct != null && maxPriceProduct.isSameProduct(product.getId())) {
 			productCachePort.removeMaxPrice(product.getCategory().getName());
 		}
 
 		Long oldTotal = brandCachePort.getBrandTotal(brandName);
-		if (oldTotal == null) oldTotal = 0L;
+		if (oldTotal == null)
+			oldTotal = 0L;
 		long newTotal = oldTotal - oldPrice;
 		if (newTotal <= 0) {
 			brandCachePort.removeBrand(brandName);
@@ -90,21 +91,35 @@ public class ProductEventListener {
 
 	}
 
-	private void updateMinPriceCache(Product product) {
-		Product minPriceProduct = productCachePort.getMinPrice(product.getCategory());
-		if (minPriceProduct == null
-				|| product.getId() == minPriceProduct.getId()
-				|| product.getPriceValue() < minPriceProduct.getPriceValue()) {
-			productCachePort.putMinPrice(product.getCategory().getName(), product);
+	private void updateMaxPriceCache(Product product) {
+		Product maxPriceProduct = productCachePort.getMaxPrice(product.getCategory());
+		if (maxPriceProduct == null) {
+			productCachePort.putMaxPrice(product.getCategory().getName(), product);
+			return;
+		}
+
+		if (product.isPreferredForMaxPrice(maxPriceProduct)) {
+			// 새 상품이 기존 최고가보다 우선순위가 높으면 갱신
+			productCachePort.putMaxPrice(product.getCategory().getName(), product);
+		} else if (maxPriceProduct.isSameProduct(product.getId())) {
+			// 캐시에 있는 상품이 수정되었는데, 수정된 상품이 최고가가 아닌 경우
+			productCachePort.removeMaxPrice(product.getCategory().getName());
 		}
 	}
 
-	private void updateMaxPriceCache(Product product) {
-		Product maxPriceProduct = productCachePort.getMaxPrice(product.getCategory());
-		if (maxPriceProduct == null
-				|| product.getId() == maxPriceProduct.getId()
-				|| product.getPriceValue() > maxPriceProduct.getPriceValue()) {
-			productCachePort.putMaxPrice(product.getCategory().getName(), product);
+	private void updateMinPriceCache(Product product) {
+		Product minPriceProduct = productCachePort.getMinPrice(product.getCategory());
+		if (minPriceProduct == null) {
+			productCachePort.putMinPrice(product.getCategory().getName(), product);
+			return;
+		}
+
+		if (product.isPreferredForMinPrice(minPriceProduct)) {
+			// 새 상품이 기존 최저가보다 우선순위가 높으면 갱신
+			productCachePort.putMinPrice(product.getCategory().getName(), product);
+		} else if (minPriceProduct.isSameProduct(product.getId())) {
+			// 캐시에 있는 상품이 수정되었는데, 수정된 상품이 최저가가 아닌 경우
+			productCachePort.removeMinPrice(product.getCategory().getName());
 		}
 	}
 

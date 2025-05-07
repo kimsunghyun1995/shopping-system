@@ -30,6 +30,30 @@ public class Product {
 		this.price = price;
 	}
 
+	/**
+	 * 최고가 비교를 위한 메서드
+	 * 가격이 같은 경우 알파벳 순으로 뒤에 오는 브랜드가 우선됨
+	 */
+	public boolean isPreferredForMaxPrice(Product other) {
+		if (this.getPriceValue() != other.getPriceValue()) {
+			return this.getPriceValue() > other.getPriceValue();
+		}
+		// 가격이 같으면 알파벳 순으로 뒤에 오는 브랜드가 우선
+		return this.getBrand().getName().compareTo(other.getBrand().getName()) > 0;
+	}
+
+	/**
+	 * 최저가 비교를 위한 메서드
+	 * 가격이 같은 경우 알파벳 순으로 앞에 오는 브랜드가 우선됨
+	 */
+	public boolean isPreferredForMinPrice(Product other) {
+		if (this.getPriceValue() != other.getPriceValue()) {
+			return this.getPriceValue() < other.getPriceValue();
+		}
+		// 가격이 같으면 알파벳 순으로 앞에 오는 브랜드가 우선
+		return this.getBrand().getName().compareTo(other.getBrand().getName()) < 0;
+	}
+
 	public void changePrice(Price newPrice) {
 		this.price = newPrice;
 	}

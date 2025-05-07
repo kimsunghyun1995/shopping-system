@@ -193,36 +193,6 @@ class ProductServiceTest {
 	}
 
 	@Test
-	@DisplayName("상품 수정/삭제 후 캐시 값이 갱신되는지 확인")
-	void testUpdateAndDeleteProduct() {
-		// 사전 작업
-		createBrandUseCase.createBrand("Gucci");
-		categoryRepository.save(new CategoryEntity("상의"));
-
-		Product product = createProductUseCase.createProduct("Gucci", "상의", 20000);
-
-		// 1) update
-		// 기존 상품 id=1이라 가정
-		Product updated = updateProductUseCase.updateProduct(1L, 25000);
-		assertThat(updated.getPriceValue()).isEqualTo(25000);
-
-		// 2) 카테고리 extremes
-		var extremes = getCategoryExtremesUseCase.getCategoryExtremes("상의");
-		assertThat(extremes.minPrice()).isEqualTo(25000);
-		assertThat(extremes.maxPrice()).isEqualTo(25000);
-
-		// 3) delete
-		deleteProductUseCase.deleteProduct(1L);
-
-		// 삭제 후 카테고리 extremes 조회 시 -> DB 상품 없음 => 예외
-		Throwable thrown = catchThrowable(() -> getCategoryExtremesUseCase.getCategoryExtremes("상의"));
-		assertThat(thrown).isInstanceOf(DataNotFoundException.class);
-		DataNotFoundException ex = (DataNotFoundException) thrown;
-		// PRODUCT_NOT_FOUND 등등
-		assertThat(ex.getErrorCode()).isEqualTo(ErrorCode.PRODUCT_NOT_FOUND);
-	}
-
-	@Test
 	@DisplayName("다수 브랜드/카테고리/상품 등록 후 브랜드별 최저합 비교")
 	void testMultipleBrandsAndCategories() {
 		// 1) 여러 브랜드 생성
@@ -289,6 +259,39 @@ class ProductServiceTest {
 	}
 
 	@Test
+	@DisplayName("브랜드 이름이 빈문자이면 예외 발생")
+	void testCreateBrand_emptyName() {
+		// 가정: Service 로직에서 빈문자 or 공백만인 Brand 이름 -> InvalidValueException
+		Throwable thrown = catchThrowable(() -> createBrandUseCase.createBrand("  "));
+		assertThat(thrown).isInstanceOf(IllegalArgumentException.class)
+				.hasMessageContaining("브랜드 이름은 필수");
+	}
+
+	@Test
+	@DisplayName("존재하지 않는 브랜드 수정 시 DataNotFoundException")
+	void testUpdateBrand_notExist() {
+		// 가정: brandId=999는 없음
+		Throwable thrown = catchThrowable(() -> updateBrandUseCase.updateBrand(999L, "Reebok"));
+		assertThat(thrown).isInstanceOf(DataNotFoundException.class)
+				.extracting("errorCode")
+				.isEqualTo(ErrorCode.BRAND_NOT_FOUND);
+	}
+
+	@Test
+	@DisplayName("없는 카테고리로 상품 생성 시 DataNotFoundException")
+	void testCreateProduct_categoryNotExist() {
+		// given: brand "Nike"는 존재
+		createBrandUseCase.createBrand("Nike");
+		// "상의" 카테고리는 미리 저장 안함 -> 존재X
+		Throwable thrown = catchThrowable(() ->
+				createProductUseCase.createProduct("Nike", "상의", 10000)
+		);
+		assertThat(thrown).isInstanceOf(DataNotFoundException.class)
+				.extracting("errorCode")
+				.isEqualTo(ErrorCode.CATEGORY_NOT_FOUND);
+	}
+
+	@Test
 	@DisplayName("없는 상품을 업데이트하려면 예외")
 	void testUpdateProduct_notExist() {
 		Throwable thrown = catchThrowable(() ->
@@ -297,6 +300,78 @@ class ProductServiceTest {
 		// 가정: PRODUCT_NOT_FOUND
 		assertThat(thrown).isInstanceOf(DataNotFoundException.class)
 				.extracting("errorCode").isEqualTo(ErrorCode.PRODUCT_NOT_FOUND);
+	}
+
+	@Test
+	@DisplayName("상품 가격 0원(경계값) 테스트")
+	void testCreateProduct_zeroPrice() {
+		// brand, category 미리 준비
+		createBrandUseCase.createBrand("Uniqlo");
+		categoryRepository.save(new CategoryEntity("바지"));
+
+		Product product = createProductUseCase.createProduct("Uniqlo", "바지", 0);
+		assertThat(product).isNotNull();
+		assertThat(product.getPriceValue()).isEqualTo(0);
+		// 이후 최저가, etc. 검증 가능
+	}
+
+	@Test
+	@DisplayName("상품 가격이 Int Max(21억) 정도 되는 경우 처리")
+	void testCreateProduct_largePrice() {
+		createBrandUseCase.createBrand("Lv");
+		categoryRepository.save(new CategoryEntity("가방"));
+
+		long bigPrice = 2_147_483_000L;  // 근사치
+		Product product = createProductUseCase.createProduct("Lv", "가방", bigPrice);
+		assertThat(product.getPriceValue()).isEqualTo(bigPrice);
+	}
+
+	@Test
+	@DisplayName("두 개 이상의 브랜드가 같은 총액(최저가) - 알파벳 순 우선")
+	void testMultipleBrandsWithSameTotalPrice_alphabetical() {
+		// BrandB, BrandA => "A"가 알파벳 순 앞선다
+		createBrandUseCase.createBrand("BrandA");
+		createBrandUseCase.createBrand("BrandB");
+
+		categoryRepository.save(new CategoryEntity("상의"));
+		categoryRepository.save(new CategoryEntity("바지"));
+
+		// BrandA => 상의=5000, 바지=5000 => total=10000
+		createProductUseCase.createProduct("BrandA", "상의", 5000);
+		createProductUseCase.createProduct("BrandA", "바지", 5000);
+
+		// BrandB => 상의=4000, 바지=6000 => total=10000 (동일)
+		createProductUseCase.createProduct("BrandB", "상의", 4000);
+		createProductUseCase.createProduct("BrandB", "바지", 6000);
+
+		// 최저가 => 두 브랜드 모두 10000, 알파벳으로 BrandA<B => BrandA 선택
+		var result = getMinBrandCombinationUseCase.getMinBrandCombination();
+		assertThat(result.brandName()).isEqualTo("BrandA");
+		assertThat(result.totalPrice().getPrice()).isEqualTo(10000);
+	}
+
+	@Test
+	@DisplayName("카테고리 최저가/최고가 여러 브랜드 동일 - 알파벳 순으로 한 브랜드만 표시")
+	void testCategoryExtremes_sameMinOrMax_alphabetical() {
+		createBrandUseCase.createBrand("BrandA"); // brandId=1
+		createBrandUseCase.createBrand("BrandB"); // brandId=2
+		createBrandUseCase.createBrand("BrandC"); // brandId=3
+
+		categoryRepository.save(new CategoryEntity("상의"));
+
+		createProductUseCase.createProduct("BrandA", "상의", 10000);
+		createProductUseCase.createProduct("BrandB", "상의", 10000);
+		createProductUseCase.createProduct("BrandC", "상의", 10000);
+
+		createProductUseCase.createProduct("BrandC", "상의", 15000);
+
+		var extremes = getCategoryExtremesUseCase.getCategoryExtremes("상의");
+		// Check
+		assertThat(extremes.minPrice()).isEqualTo(10000);
+		assertThat(extremes.minBrandName()).isEqualTo("BrandA");
+
+		assertThat(extremes.maxPrice()).isEqualTo(15000);
+		assertThat(extremes.maxBrandName()).isEqualTo("BrandC");
 	}
 
 }

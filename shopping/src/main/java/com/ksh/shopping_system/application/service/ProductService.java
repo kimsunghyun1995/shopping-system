@@ -116,20 +116,25 @@ public class ProductService implements
 			brandMap = brandCachePort.asMap();
 		}
 
-		// 최소값 찾기
-		String cheapestBrand = null;
-		long minTotal = Long.MAX_VALUE;
-		for (Map.Entry<String, Long> e : brandMap.entrySet()) {
-			if (e.getValue() < minTotal) {
-				minTotal = e.getValue();
-				cheapestBrand = e.getKey();
-			}
-		}
+		// minTotal 찾기
+		long minTotal = brandMap.values().stream()
+				.min(Long::compare)
+				.orElseThrow(() -> new IllegalStateException("No brands found"));
 
-		// 가장 저렴한 브랜드의 상품 목록 DB 조회
+		// minTotal을 가진 브랜드들 추출 -> 알파벳 순 정렬 -> 첫 번째
+		List<String> tiedBrands = brandMap.entrySet().stream()
+				.filter(e -> e.getValue() == minTotal)
+				.map(Map.Entry::getKey)
+				.sorted() // 알파벳 순
+				.toList();
+
+		// 알파벳 순으로 첫 브랜드
+		String cheapestBrand = tiedBrands.get(0);
+
+		// 해당 브랜드 상품 목록 DB 조회
 		List<Product> products = selectProductPort.findByBrandName(cheapestBrand);
 
-		// 4) 결과 객체 구성
+		// 결과 객체 구성
 		return new CheapestBrandResult(
 				cheapestBrand,
 				new Price(minTotal), // Price VO
