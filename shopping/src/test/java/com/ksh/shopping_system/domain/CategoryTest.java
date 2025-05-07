@@ -1,10 +1,12 @@
 package com.ksh.shopping_system.domain;
 
+import com.ksh.shopping_system.exception.InvalidValueException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class CategoryTest {
@@ -20,6 +22,22 @@ class CategoryTest {
 
 		// then
 		assertThat(category.getName()).isEqualTo(name);
+	}
+
+	@Test
+	@DisplayName("카데고리가 255자가 넘으면 에러 발생")
+	void validateCategoryName() {
+		// given
+		String name = "abcd";
+		for (int i = 0; i < 255; i++) {
+			name += "abcd";
+		}
+
+		String finalName = name;
+
+		assertThatThrownBy(() -> new Category(finalName))
+				.isInstanceOf(InvalidValueException.class)
+				.hasMessage("title is too long");
 	}
 
 	@Nested
