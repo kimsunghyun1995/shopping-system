@@ -42,20 +42,20 @@ public class ProductMapper {
 		);
 	}
 
-	public Product minPriceCacheToDomain(MinPriceCacheValue cacheValue,  Category category) {
+	public Product minPriceCacheToDomain(MinPriceCacheValue cacheValue, Category category) {
 		if (cacheValue == null)
 			return null;
 		Brand brand = new Brand(cacheValue.getBrandName());
 		Price price = new Price(cacheValue.getPrice());
-		return new Product(brand, category, price);
+		return new Product(cacheValue.getPrdouctId(), brand, category, price);
 	}
 
-	public Product maxPriceCacheToDomain(MaxPriceCacheValue maxPriceCacheValue, Category category) {
-		if (maxPriceCacheValue == null)
+	public Product maxPriceCacheToDomain(MaxPriceCacheValue cacheValue, Category category) {
+		if (cacheValue == null)
 			return null;
-		Brand brand = new Brand(maxPriceCacheValue.getBrandName());
-		Price price = new Price(maxPriceCacheValue.getPrice());
-		return new Product(brand, category, price);
+		Brand brand = new Brand(cacheValue.getBrandName());
+		Price price = new Price(cacheValue.getPrice());
+		return new Product(cacheValue.getPrdouctId(), brand, category, price);
 	}
 
 }

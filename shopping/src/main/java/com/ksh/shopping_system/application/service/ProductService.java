@@ -223,7 +223,7 @@ public class ProductService implements
 		// 현재 캐시값
 		Product minPriceProduct = productCachePort.getMinPrice(category);
 		// 비교
-		if (minPriceProduct == null || product.getPriceValue() < minPriceProduct.getPriceValue()) {
+		if (minPriceProduct == null || product.getId() == minPriceProduct.getId() || product.getPriceValue() < minPriceProduct.getPriceValue()) {
 			productCachePort.putMinPrice(category.getName(), product);
 		}
 	}
@@ -232,7 +232,7 @@ public class ProductService implements
 		// 현재 캐시값
 		Product maxPriceProduct = productCachePort.getMaxPrice(category);
 		// 비교
-		if (maxPriceProduct == null || product.getPriceValue() > maxPriceProduct.getPriceValue()) {
+		if (maxPriceProduct == null || product.getId() == maxPriceProduct.getId() || product.getPriceValue() > maxPriceProduct.getPriceValue()) {
 			productCachePort.putMaxPrice(category.getName(), product);
 		}
 	}
