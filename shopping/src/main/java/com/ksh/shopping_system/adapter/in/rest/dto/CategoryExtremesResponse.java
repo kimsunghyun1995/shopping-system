@@ -2,7 +2,9 @@ package com.ksh.shopping_system.adapter.in.rest.dto;
 
 import com.ksh.shopping_system.common.response.BaseResponse;
 import com.ksh.shopping_system.domain.CategoryExtremesResult;
+import lombok.Getter;
 
+@Getter
 public class CategoryExtremesResponse extends BaseResponse {
 
 	private String category;
@@ -29,6 +31,7 @@ public class CategoryExtremesResponse extends BaseResponse {
 		);
 	}
 
+	@Getter
 	public static class BrandPrice {
 		private String brand;
 		private long price;

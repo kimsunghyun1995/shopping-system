@@ -21,12 +21,10 @@ import java.util.List;
 @RequiredArgsConstructor
 public class ProductController {
 
-	// Brand Use Cases
 	private final CreateBrandUseCase createBrandUseCase;
 	private final UpdateBrandUseCase updateBrandUseCase;
 	private final DeleteBrandUseCase deleteBrandUseCase;
 
-	// Product Use Cases
 	private final CreateProductUseCase createProductUseCase;
 	private final UpdateProductUseCase updateProductUseCase;
 	private final DeleteProductUseCase deleteProductUseCase;
