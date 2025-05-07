@@ -73,11 +73,11 @@ public class ProductPersistenceAdapter
 	public Product saveProduct(String brandName, String categoryName, long priceValue) {
 		BrandEntity brandEntity = brandRepository.findByName(brandName)
 				.orElseThrow(() -> new DataNotFoundException(
-						ErrorCode.PRODUCT_NOT_FOUND,
+						ErrorCode.BRAND_NOT_FOUND,
 						"brand not found: " + brandName));
 		CategoryEntity categoryEntity = categoryRepository.findByName(categoryName)
 				.orElseThrow(() -> new DataNotFoundException(
-						ErrorCode.PRODUCT_NOT_FOUND,
+						ErrorCode.CATEGORY_NOT_FOUND,
 						"category not found: " + categoryName));
 		ProductEntity productEntity = new ProductEntity(brandEntity, categoryEntity, priceValue);
 		ProductEntity save = productRepository.save(productEntity);
